@@ -14,20 +14,20 @@ Sample code in Machine Learning in Action
 
 ### Chapter 6: Support Vector Machine
 
-### AdaBoost
+### Chapter 7: AdaBoost
 
-### Regression
+### Chapter 8: Regression
 
-### Tree Regression
+### Chapter 9: Tree Regression
 
-### k-means
+### Chapter 10: k-means
 
-### Apriori
+### Chapter 11: Apriori
 
-### FP-growth
+### Chapter 12: FP-growth
 
-### PCA
+### Chapter 13: PCA
 
-### SVD
+### Chapter 14: SVD
 
-### Big Data and MapReduce
+### Chapter 15: Big Data and MapReduce
