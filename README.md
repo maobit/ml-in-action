@@ -2,32 +2,34 @@
 
 Sample code in Machine Learning in Action
 
-### Chapter 1: Foundations of Machine Learning
+### 1. Foundations of Machine Learning
 
-### Chapter 2: k-Nearest Neighbor
+### 2. k近邻算法
+- 算法思路简单，没有训练过程。
+- 在测试过程中需要找到与测试数据最近的`k`个点，运算量大。可通过改进搜索最近的数据点进行优化，如 kd数，球树等。
 
-### Chapter 3: Decision Tree
+### 3. Decision Tree
 
-### Chapter 4: Naive Bayes
+### 4. Naive Bayes
 
-### Chapter 5: Logistic Regression
+### 5. Logistic Regression
 
-### Chapter 6: Support Vector Machine
+### 6. Support Vector Machine
 
-### Chapter 7: AdaBoost
+### 7. AdaBoost
 
-### Chapter 8: Regression
+### 8. Regression
 
-### Chapter 9: Tree Regression
+### 9. Tree Regression
 
-### Chapter 10: k-means
+### 10. k-means
 
-### Chapter 11: Apriori
+### 11. Apriori
 
-### Chapter 12: FP-growth
+### 12. FP-growth
 
-### Chapter 13: PCA
+### 13. PCA
 
-### Chapter 14: SVD
+### 14. SVD
 
-### Chapter 15: Big Data and MapReduce
+### 15. Big Data and MapReduce
