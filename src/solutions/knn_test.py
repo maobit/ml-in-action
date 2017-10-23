@@ -45,5 +45,5 @@ def digits_classify(classifier):
     print('the total error rate is: %f' % (err_cnt / float(m_test)))
 
 if __name__ == '__main__':
-    knn = KNearestNeighbor(k=3)
-    digits_classify(knn)
+    knn = KNearestNeighbor(k=10)
+    digits_classify(classifier=knn)
