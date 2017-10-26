@@ -1,6 +1,8 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
+# -*- utf-8 -*-
 
 import numpy as np
+import feedparser
 
 
 def load_data_set():
@@ -15,7 +17,7 @@ def load_data_set():
 
 
 def create_vocab_list(data_set):
-    # ´´½¨´Ê±í
+    # åˆ›å»ºè¯è¡¨
     vocab_set = set([])
     for document in data_set:
         vocab_set = vocab_set | set(document)
@@ -33,11 +35,10 @@ def set_of_words2vec(vocab_list, input_set):
 
 
 def train_nb0(train_mat, train_category):
-    # ¼ÆËãÃ¿Ò»¸öµ¥´Ê³öÏÖµÄÔÚ¸ø¶¨Àà±ðµÄÌõ¼þÏÂµÄ¸ÅÂÊ
     num_train_docs = len(train_mat)
     num_words = len(train_mat[0])
     p_abusive = sum(train_category) / float(num_train_docs)
-    p0_num = np.ones(num_words)  # Îª·ÀÖ¹¼ÆËãµÄºóÑé¸ÅÂÊÎª 0
+    p0_num = np.ones(num_words)  # å¹³æ»‘
     p1_num = np.ones(num_words)
     p0_denom = 2.0
     p1_denom = 2.0
@@ -55,7 +56,6 @@ def train_nb0(train_mat, train_category):
 
 
 def classify_nb(vec_to_classify, p0_vec, p1_vec, p_class1):
-    # Õë¶Ô¶þ·ÖÀàÎÊÌâ£¬Èç¹ûÊÇ¶à·ÖÀàÐèÒª½øÐÐÊÊµ±µÄÐÞ¸Ä
     p1 = sum(vec_to_classify * p1_vec) + np.log(p_class1)
     p0 = sum(vec_to_classify * p0_vec) + np.log(1 - p_class1)
     if p1 > p0:
@@ -80,7 +80,7 @@ def test_nb():
 
 
 def bag_of_words2vec(vocab_list, input_set):
-    # ´Ê´üÄ£ÐÍ
+    # è¯è¢‹æ¨¡åž‹
     ret_vec = [0] * len(vocab_list)
     for word in input_set:
         if word in vocab_list:
@@ -108,12 +108,12 @@ def spam_test():
         full_text.extend(word_list)
         class_list.append(0)
     vocab_list = create_vocab_list(doc_list)
-    train_set = range(50)
+    train_set = list(range(50))
     test_set = []
     for i in range(10):
         rand_index = int(np.random.uniform(0, len(train_set)))
         test_set.append(train_set[rand_index])
-        del(train_set[rand_index])
+        del (train_set[rand_index])
     train_mat = []
     train_classes = []
     for doc_index in train_set:
@@ -127,3 +127,78 @@ def spam_test():
             error_cnt += 1
     print('the error rate is: %f' % (float(error_cnt) / len(test_set)))
 
+
+def calc_most_freq(vocab_list, full_text):
+    import operator
+    freq_dict = {}
+    for token in vocab_list:
+        freq_dict[token] = full_text.count(token)
+    sorted_freq = sorted(freq_dict.items(), key=operator.itemgetter(1), reverse=True)
+    return sorted_freq[:30]
+
+
+def local_words(feed1, feed0):
+    doc_list = []
+    class_list = []
+    full_text = []
+    min_len = min(len(feed0['entries']), len(feed1['entries']))
+    for i in range(min_len):
+        word_list = text_parse(feed1['entries'][i]['summary'])
+        doc_list.append(word_list)
+        full_text.extend(word_list)
+        class_list.append(1)
+        word_list = text_parse(feed0['entries'][i]['summary'])
+        doc_list.append(word_list)
+        full_text.extend(word_list)
+        class_list.append(0)
+    vocab_list = create_vocab_list(doc_list)
+    top30_words = calc_most_freq(vocab_list, full_text)
+    # åŽ»é™¤é«˜é¢‘è¯
+    for pair_w in top30_words:
+        if pair_w[0] in vocab_list:
+            vocab_list.remove(pair_w[0])
+    train_set = list(range(2 * min_len))
+    test_set = []
+    for i in range(20):
+        rand_index = int(np.random.uniform(0, len(train_set)))
+        test_set.append(train_set[rand_index])
+        del (train_set[rand_index])
+
+    train_mat = []
+    train_classes = []
+    for doc_index in train_set:
+        train_mat.append(bag_of_words2vec(vocab_list, doc_list[doc_index]))
+        train_classes.append(class_list[doc_index])
+    p0_v, p1_v, p_spam = train_nb0(np.array(train_mat), np.array(train_classes))
+    error_cnt = 0
+    for doc_index in test_set:
+        word_vector = bag_of_words2vec(vocab_list, doc_list[doc_index])
+        if classify_nb(word_vector, p0_v, p1_v, p_spam) != class_list[doc_index]:
+            error_cnt += 1
+    print('the error rate is: %f' % (float(error_cnt) / len(test_set)))
+    return vocab_list, p0_v, p1_v
+
+
+def get_feed():
+    ny = feedparser.parse('http://newyork.craigslist.org/stp/index.rss')
+    sf = feedparser.parse('http://sfbay.craigslist.org/stp/index.rss')
+    return ny, sf
+
+
+def get_top_words(ny, sf):
+    vocab_list, p0_v, p1_v = local_words(ny, sf)
+    top_ny = []
+    top_sf = []
+    for i in range(len(p0_v)):
+        if p0_v[i] > -6.0:
+            top_sf.append((vocab_list[i], p0_v[i]))
+        if p1_v[i] > -6.0:
+            top_ny.append((vocab_list[i], p1_v[i]))
+    sorted_sf = sorted(top_sf, key=lambda pair: pair[1], reverse=True)
+    print('SF**' * 10)
+    for item in sorted_sf:
+        print(item[0])
+    sorted_ny = sorted(top_ny, key=lambda pair: pair[1], reverse=True)
+    print('NY**' * 10)
+    for item in sorted_ny:
+        print(item[0])
