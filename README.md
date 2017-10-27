@@ -8,13 +8,13 @@ Sample code in Machine Learning in Action
 - 算法思路简单，没有训练过程。
 - 在测试过程中需要找到与测试数据最近的`k`个点，运算量大。可通过改进搜索最近的数据点进行优化，如 kd树，球树等。
 
-### 3. Decision Tree
+### 3. 决策树
 
-### 4. Naive Bayes
+### 4. 朴素贝叶斯
 
-### 5. Logistic Regression
+### 5. 逻辑回归
 
-### 6. Support Vector Machine
+### 6. 支持向量机
 
 ### 7. AdaBoost
 
