@@ -51,13 +51,13 @@ def smo_simple(data_mat, class_mat, c, toler, max_iter):
                 alpha_i_old = alphas[i].copy()
                 alpha_j_old = alphas[j].copy()
                 if label_mat[i] != label_mat[j]:
-                    l = max(0, alphas[i] - alphas[j])
-                    h = min(c, c + alphas[i] - alphas[j])
+                    low = max(0, alphas[j] - alphas[i])
+                    high = min(c, c + alphas[j] - alphas[i])
                 else:
-                    l = max(0, alphas[i] + alphas[j] - c)
-                    h = min(c, alphas[i] + alphas[j])
-                if l == h:
-                    print('l == h')
+                    low = max(0, alphas[j] + alphas[i] - c)
+                    high = min(c, alphas[j] + alphas[i])
+                if low == high:
+                    print('low == high')
                     continue
                 eta = 2.0 * data_matrix[i, :] * data_matrix[j, :].T - data_matrix[i, :] * data_matrix[i, :].T - \
                       data_matrix[j, :] * data_matrix[j, :].T
@@ -65,8 +65,8 @@ def smo_simple(data_mat, class_mat, c, toler, max_iter):
                     print('eta >= 0')
                     continue
                 alphas[j] = alphas[j] - label_mat[j] * (e_i - e_j) / eta
-                alphas[j] = clip_alpha(alphas[j], h, l)
-                if abs(alphas[j] - alpha_j_old < 0.00001):
+                alphas[j] = clip_alpha(alphas[j], high, low)
+                if abs(alphas[j] - alpha_j_old < 1e-5):
                     print('j not moving enough')
                     continue
                 alphas[i] = alphas[i] + label_mat[j] * label_mat[i] * (alpha_j_old - alphas[j])
