@@ -44,7 +44,9 @@ def smo_simple(data_mat, class_mat, c, toler, max_iter):
         for i in range(m):
             f_xi = float(np.multiply(alphas, label_mat).T * (data_matrix * data_matrix[i, :].T)) + b
             e_i = f_xi - float(label_mat[i])
+            # 选择第一个需要优化的 α
             if (label_mat[i] * e_i < -toler and alphas[i] < c) or (label_mat[i] * e_i > toler and alphas[i] > 0):
+                # 随机选择第二个需要优化的 α
                 j = select_j_rand(i, m)
                 f_xj = float(np.multiply(alphas, label_mat).T * (data_matrix * data_matrix[j, :].T)) + b
                 e_j = f_xj - float(label_mat[j])
