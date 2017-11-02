@@ -99,9 +99,9 @@ class OptStructure:
         self.c = c
         self.tol = toler
         self.m = np.shape(data_mat_in)[0]
-        self.alphas = np.mat(np.zeros(self.m, 1))
+        self.alphas = np.mat(np.zeros((self.m, 1)))
         self.b = 0
-        self.e_cache = np.mat(np.zeros(self.m, 2))
+        self.e_cache = np.mat(np.zeros((self.m, 2)))
 
 
 def calc_e_k(o_s, k):
@@ -155,7 +155,7 @@ def inner_loop(i, o_s):
         if low == high:
             print('low == high')
             return 0
-        eta = 2.0 * o_s.x[i, :] * o_s.x[j, :].T - o_s.x[i, :] * o_s.x[i, :].T - o_s.x[j, :] * o_s.x[j:, ].T
+        eta = 2.0 * o_s.x[i, :] * o_s.x[j, :].T - o_s.x[i, :] * o_s.x[i, :].T - o_s.x[j, :] * o_s.x[j, :].T
         if eta >= 0:
             print('eta >= 0')
             return 0
@@ -197,7 +197,28 @@ def smo_p(data_mat, class_labels, c, toler, max_iter, k_tup=('lin', 0)):
                 print('full set, iter: %d, i: %d pairs changed %d' % (iteration, i, alpha_pairs_changed))
             iteration += 1
         else:
-            non_bound_is = np.nonzero()
+            non_bound_is = np.nonzero((o_s.alphas.A > 0) * (o_s.alphas.A < c))[0]
+            for i in non_bound_is:
+                alpha_pairs_changed += inner_loop(i, o_s)
+                print('non-bound, iter: %d i: %d, pairs changed %d' % (iteration, i, alpha_pairs_changed))
+            iteration += 1
+        if entire_set:
+            entire_set = False
+        elif alpha_pairs_changed == 0:
+            entire_set = True
+        print('iteration number: %d' % iteration)
+    return o_s.b, o_s.alphas
+
+
+def calc_ws(alphas, data_arr, class_labels):
+    x = np.mat(data_arr)
+    label_mat = np.mat(class_labels).transpose()
+    m, n = np.shape(x)
+    w = np.zeros((n, 1))
+    for i in range(m):
+        w += np.multiply(alphas[i] * label_mat[i], x[i, :].T)
+    return w
+
 
 if __name__ == '__main__':
     pass
