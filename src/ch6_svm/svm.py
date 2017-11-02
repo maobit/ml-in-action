@@ -93,7 +93,7 @@ def smo_simple(data_mat, class_mat, c, toler, max_iter):
 
 
 class OptStructure:
-    def __init__(self, data_mat_in, class_labels, c, toler):
+    def __init__(self, data_mat_in, class_labels, c, toler, k_tup):
         self.x = data_mat_in
         self.label_mat = class_labels
         self.c = c
@@ -102,10 +102,13 @@ class OptStructure:
         self.alphas = np.mat(np.zeros((self.m, 1)))
         self.b = 0
         self.e_cache = np.mat(np.zeros((self.m, 2)))
+        self.k = np.mat(np.zeros((self.m, self.m)))
+        for i in range(self.m):
+            self.k[:, i] = kernel_trans(self.x, self.x[i, :], k_tup)
 
 
 def calc_e_k(o_s, k):
-    f_xk = float(np.multiply(o_s.alphas, o_s.label_mat).T * (o_s.x * o_s.x[k, :].T)) + o_s.b
+    f_xk = float(np.multiply(o_s.alphas, o_s.label_mat).T * o_s.k[:, k]) + o_s.b
     e_k = f_xk - float(o_s.label_mat[k])
     return e_k
 
@@ -153,26 +156,24 @@ def inner_loop(i, o_s):
             low = max(0, o_s.alphas[j] + o_s.alphas[i])
             high = min(o_s.c, o_s.alphas[j] + o_s.alphas[i])
         if low == high:
-            print('low == high')
+            # print('low == high')
             return 0
-        eta = 2.0 * o_s.x[i, :] * o_s.x[j, :].T - o_s.x[i, :] * o_s.x[i, :].T - o_s.x[j, :] * o_s.x[j, :].T
+        eta = 2.0 * o_s.k[i, j] - o_s.k[i, i] - o_s.k[j, j]
         if eta >= 0:
-            print('eta >= 0')
+            # print('eta >= 0')
             return 0
         o_s.alphas[j] = o_s.alphas[j] - o_s.label_mat[j] * (e_i - e_j) / eta
         o_s.alphas[j] = clip_alpha(o_s.alphas[j], high, low)
         update_ek(o_s, j)
         if abs(o_s.alphas[j] - alpha_j_old) < 1e-5:
-            print('j not moving enough')
+            # print('j not moving enough')
             return 0
         o_s.alphas[i] = o_s.alphas[i] + o_s.label_mat[j] * o_s.label_mat[i] * (alpha_j_old - o_s.alphas[j])
         update_ek(o_s, i)
         b1 = o_s.b - e_i - o_s.label_mat[i] * (o_s.alphas[i] - alpha_i_old) * \
-            o_s.x[i, :] * o_s.x[i, :].T - o_s.label_mat[j] * (o_s.alphas[j] - alpha_j_old) * \
-            o_s.x[i, :] * o_s.x[j, :].T
+            o_s.k[i, i] - o_s.label_mat[j] * (o_s.alphas[j] - alpha_j_old) * o_s.k[i, j]
         b2 = o_s.b - e_j - o_s.label_mat[i] * (o_s.alphas[i] - alpha_i_old) * \
-            o_s.x[i, :] * o_s.x[j, :].T - o_s.label_mat[j] * (o_s.alphas[j] - alpha_j_old) * \
-            o_s.x[j, :] * o_s.x[j, :].T
+            o_s.k[i, j] - o_s.label_mat[j] * (o_s.alphas[j] - alpha_j_old) * o_s.k[j, j]
         if 0 < o_s.alphas[i] < o_s.c:
             o_s.b = b1
         elif 0 < o_s.alphas[j] < o_s.c:
@@ -185,7 +186,7 @@ def inner_loop(i, o_s):
 
 
 def smo_p(data_mat, class_labels, c, toler, max_iter, k_tup=('lin', 0)):
-    o_s = OptStructure(np.mat(data_mat), np.mat(class_labels).transpose(), c, toler)
+    o_s = OptStructure(np.mat(data_mat), np.mat(class_labels).transpose(), c, toler, k_tup)
     iteration = 0
     entire_set = True
     alpha_pairs_changed = 0
@@ -194,13 +195,13 @@ def smo_p(data_mat, class_labels, c, toler, max_iter, k_tup=('lin', 0)):
         if entire_set:
             for i in range(o_s.m):
                 alpha_pairs_changed += inner_loop(i, o_s)
-                print('full set, iter: %d, i: %d pairs changed %d' % (iteration, i, alpha_pairs_changed))
+                # print('full set, iter: %d, i: %d pairs changed %d' % (iteration, i, alpha_pairs_changed))
             iteration += 1
         else:
             non_bound_is = np.nonzero((o_s.alphas.A > 0) * (o_s.alphas.A < c))[0]
             for i in non_bound_is:
                 alpha_pairs_changed += inner_loop(i, o_s)
-                print('non-bound, iter: %d i: %d, pairs changed %d' % (iteration, i, alpha_pairs_changed))
+                # print('non-bound, iter: %d i: %d, pairs changed %d' % (iteration, i, alpha_pairs_changed))
             iteration += 1
         if entire_set:
             entire_set = False
@@ -218,6 +219,109 @@ def calc_ws(alphas, data_arr, class_labels):
     for i in range(m):
         w += np.multiply(alphas[i] * label_mat[i], x[i, :].T)
     return w
+
+
+def kernel_trans(x, a, k_tup):
+    m, n = np.shape(x)
+    k = np.mat(np.zeros((m, 1)))
+    if k_tup[0] == 'lin':
+        k = x * a.T
+    elif k_tup[0] == 'rbf':
+        for j in range(m):
+            delta_row = x[j, :] - a
+            k[j] = delta_row * delta_row.T
+        k = np.exp(k / (-1 * k_tup[1] ** 2))
+    else:
+        raise NameError('Houston We Have a Problem -- That Kernel is not recognized')
+    return k
+
+
+def test_rbf(k1=1.3):
+    data_arr, label_arr = load_data('../../data/ch6/testSetRBF.txt')
+    b, alphas = smo_p(data_arr, label_arr, 200, 1e-4, 10000, ('rbf', k1))
+    data_mat = np.mat(data_arr)
+    label_mat = np.mat(label_arr).transpose()
+    sv_ind = np.nonzero(alphas.A > 0)[0]
+    sv_s = data_mat[sv_ind]
+    label_sv = label_mat[sv_ind]
+    print('there are %d Support Vectors' % np.shape(sv_s)[0])
+    m, n = np.shape(data_mat)
+    err_cnt = 0
+    for i in range(m):
+        kernel_eval = kernel_trans(sv_s, data_mat[i, :], ('rbf', k1))
+        predict = kernel_eval.T * np.multiply(label_sv, alphas[sv_ind]) + b
+        if np.sign(predict) != np.sign(label_arr[i]):
+            err_cnt += 1
+    print('the training error rate is: %f' % (float(err_cnt) / m))
+    data_arr, label_arr = load_data('../../data/ch6/testSetRBF2.txt')
+    err_cnt = 0
+    data_mat = np.mat(data_arr)
+    label_mat = np.mat(label_arr).transpose()
+    m, n = np.shape(data_mat)
+    for i in range(m):
+        kernel_eval = kernel_trans(sv_s, data_mat[i, :], ('rbf', k1))
+        predict = kernel_eval.T * np.multiply(label_sv, alphas[sv_ind]) + b
+        if np.sign(predict) != np.sign(label_arr[i]):
+            err_cnt += 1
+    print('the test error rate is: %f' % (float(err_cnt) / m))
+
+
+def img2vector(filename):
+    return_vec = np.zeros((1, 1024))
+    fr = open(filename)
+    for i in range(32):
+        line_str = fr.readline()
+        for j in range(32):
+            return_vec[0, 32 * i + j] = int(line_str[i])
+    return return_vec
+
+
+def load_image(dir_name):
+    from os import listdir
+    hw_labels = []
+    training_file_list = listdir('../../data/ch6/%s' % dir_name)
+    m = len(training_file_list)
+    training_mat = np.zeros((m, 1024))
+    for i in range(m):
+        file_name_str = training_file_list[i]
+        file_str = file_name_str.split('.')[0]
+        class_num_str = int(file_str.split('_')[0])
+        if class_num_str == 9:
+            hw_labels.append(-1)
+        else:
+            hw_labels.append(1)
+        training_mat[i, :] = img2vector('../../data/ch6/%s/%s' % (dir_name, file_name_str))
+    return training_mat, hw_labels
+
+
+def test_digits(k_tup=('rbf', 10)):
+    data_arr, label_arr = load_image('trainingDigits')
+    b, alphas = smo_p(data_arr, label_arr, 200, 1e-4, 10000, k_tup)
+    data_mat = np.mat(data_arr)
+    label_mat = np.mat(label_arr).transpose()
+    sv_ind = np.nonzero(alphas.A > 0)[0]
+    sv_s = data_mat[sv_ind]
+    label_sv = label_mat[sv_ind]
+    print('there are %d Support Vectors' % np.shape(sv_s)[0])
+    m, n = np.shape(data_mat)
+    err_cnt = 0
+    for i in range(m):
+        kernel_eval = kernel_trans(sv_s, data_mat[i, :], k_tup)
+        predict = kernel_eval.T * np.multiply(label_sv, alphas[sv_ind]) + b
+        if np.sign(predict) != np.sign(label_arr[i]):
+            err_cnt += 1
+    print('the training error rate is: %f' % (float(err_cnt) / m))
+    data_arr, label_arr = load_image('testDigits')
+    err_cnt = 0
+    data_mat = np.mat(data_arr)
+    label_mat = np.mat(label_arr).transpose()
+    m, n = np.shape(data_mat)
+    for i in range(m):
+        kernel_eval = kernel_trans(sv_s, data_mat[i, :], k_tup)
+        predict = kernel_eval.T * np.multiply(label_sv, alphas[sv_ind]) + b
+        if np.sign(predict) != np.sign(label_arr[i]):
+            err_cnt += 1
+    print('the test error rate is: %f' % (float(err_cnt) / m))
 
 
 if __name__ == '__main__':
