@@ -75,7 +75,7 @@ def adaboost_train_ds(data_arr, class_labels, num_iter=40):
         print('total error: ', err_rate)
         if err_rate == 0.0:
             break
-    return weak_class_arr
+    return weak_class_arr, agg_class_est
 
 
 def ada_classify(data2class, classifier_arr):
@@ -87,6 +87,51 @@ def ada_classify(data2class, classifier_arr):
         agg_class_est += classifier_arr[i]['alpha'] * class_est
         print(agg_class_est)
     return np.sign(agg_class_est)
+
+
+def load_data(file_name):
+    num_feat = len(open(file_name).readline().split('\t'))
+    data_mat = []
+    label_mat = []
+    with open(file_name) as fr:
+        for line in fr.readlines():
+            line_arr = []
+            cur_line = line.strip().split('\t')
+            for i in range(num_feat - 1):
+                line_arr.append(float(cur_line[i]))
+            data_mat.append(line_arr)
+            label_mat.append(float(cur_line[-1]))
+    return data_mat, label_mat
+
+
+def plot_roc(pred_strengths, class_labels):
+    import matplotlib.pyplot as plt
+    cur = (1.0, 1.0)
+    y_sum = 0.0
+    num_pos_class = np.sum(np.array(class_labels) == 1.0)
+    y_step = 1 / float(num_pos_class)
+    x_step = 1 / (len(class_labels) - num_pos_class)
+    sorted_indicies = pred_strengths.argsort()
+    fig = plt.figure()
+    fig.clf()
+    ax = plt.subplot(111)
+    for index in sorted_indicies.tolist()[0]:
+        if class_labels[index] == 1.0:
+            del_x = 0
+            del_y = y_step
+        else:
+            del_x = x_step
+            del_y = 0
+            y_sum += cur[1]
+        ax.plot([cur[0], cur[0] - del_x], [cur[1], cur[1] - del_y], c='b')
+        cur = (cur[0] - del_x, cur[1] - del_y)
+    ax.plot([0, 1], [0, 1], 'b--')
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('ROC curve for AdaBoost Horse Colic Detection System')
+    ax.axis([0, 1, 0, 1])
+    plt.show()
+    print('the Area Under the Curve is:', y_sum * x_step)
 
 
 if __name__ == '__main__':
