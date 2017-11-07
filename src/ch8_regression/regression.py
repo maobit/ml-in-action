@@ -81,5 +81,72 @@ def plot_lwlr(x_arr, y_arr, k):
     plt.show()
 
 
+def rss_error(y_arr, y_hat):
+    return ((y_arr - y_hat) ** 2).sum()
+
+
+def ridge_regression(x_mat, y_mat, lam=0.2):
+    xtx = x_mat.T * x_mat
+    denom = xtx + np.eye(np.shape(x_mat)[1]) * lam
+    if np.linalg.det(denom) == 0.0:
+        print('this matrix is singular, cannot do inverse')
+        return
+    ws = denom.T * (x_mat.T * y_mat)
+    return ws
+
+
+def ridge_test(x_arr, y_arr):
+    x_mat = np.mat(x_arr)
+    y_mat = np.mat(y_arr).T
+    y_mean = np.mean(y_mat, 0)
+    y_mat = y_mat - y_mean
+    x_means = np.mean(x_mat, 0)
+    x_var = np.var(x_mat, 0)
+    x_mat = (x_mat - x_means) / x_var
+    num_test_pts = 30
+    w_mat = np.zeros((num_test_pts, np.shape(x_mat)[1]))
+    for i in range(num_test_pts):
+        ws = ridge_regression(x_mat, y_mat, np.exp(i - 10))
+        w_mat[i, :] = ws.T
+    return w_mat
+
+
+def regularize(x_mat):
+    in_mat = x_mat.copy()
+    in_mat_mean = np.mean(in_mat, 0)
+    in_mat_var = np.var(in_mat, 0)
+    in_mat = (in_mat - in_mat_mean) / in_mat_var
+    return in_mat
+
+
+def stage_wise(x_arr, y_arr, eps=0.01, num_iter=100):
+    x_mat = np.mat(x_arr)
+    y_mat = np.mat(y_arr).T
+    y_mean = np.mean(y_mat, 0)
+    y_mat = y_mat - y_mean
+    x_mat = regularize(x_mat)
+    m, n = np.shape(x_mat)
+    return_mat = np.zeros((num_iter, n))
+    ws = np.zeros((n, 1))
+    ws_test = ws.copy()
+    ws_max = ws.copy()
+    for i in range(num_iter):
+        print(ws)
+        lowest_err = np.inf
+        for j in range(n):
+            for sign in [-1, 1]:
+                ws_test = ws.copy()
+                ws_test[j] += eps * sign
+                y_test = x_mat * ws_test
+                rss_e = rss_error(y_mat.A, y_test.A)
+                if rss_e < lowest_err:
+                    lowest_err = rss_e
+                    ws_max = ws_test
+        ws = ws_max.copy()
+        return_mat[i, :] = ws.T
+
+    return return_mat
+
+
 if __name__ == '__main__':
     pass
