@@ -2,7 +2,7 @@
 
 Sample code in Machine Learning in Action
 
-### 1. Foundations of Machine Learning
+### 1. 机器学习基础
 
 ### 2. k近邻算法
 - 算法思路简单，没有训练过程。
