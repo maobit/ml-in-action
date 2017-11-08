@@ -77,5 +77,42 @@ def choose_best_split(data_set, leaf_type=reg_leaf, err_type=reg_err, ops=(1, 4)
     return best_dim, best_val
 
 
+def is_tree(obj):
+    print('is_tree')
+    return type(obj).__name__ == 'dict'
+
+
+def get_mean(tree):
+    if is_tree(tree['right']):
+        return get_mean(tree['right'])
+    if is_tree(tree['left']):
+        return get_mean(tree['left'])
+    return (tree['left'] + tree['right']) / 2.0
+
+
+def prune(tree, test_data):
+    if np.shape(test_data)[0] == 0:
+        return get_mean(tree)
+    if is_tree(tree['left']) or is_tree(tree['right']):
+        l_set, r_set = bin_split_data(test_data, tree['split_dim'], tree['split_val'])
+        if is_tree(tree['left']):
+            return prune(tree['left'], l_set)
+        if is_tree(tree['right']):
+            return prune(tree['right'], r_set)
+    if not is_tree(tree['left']) and not is_tree(tree['right']):
+        l_set, r_set = bin_split_data(test_data, tree['split_dim'], tree['split_val'])
+        err_no_merge = np.sum(np.power(l_set[:, -1] - tree['left'], 2)) + np.sum(
+            np.power(r_set[:, -1] - tree['right'], 2))
+        tree_mean = (tree['left'] + tree['right']) / 2.0
+        err_merge = np.sum(np.power(test_data[:, -1] - tree_mean, 2))
+        if err_merge < err_no_merge:
+            print('merging')
+            return tree_mean
+        else:
+            return tree
+    else:
+        return tree
+
+
 if __name__ == '__main__':
     pass
