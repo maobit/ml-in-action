@@ -78,7 +78,6 @@ def choose_best_split(data_set, leaf_type=reg_leaf, err_type=reg_err, ops=(1, 4)
 
 
 def is_tree(obj):
-    print('is_tree')
     return type(obj).__name__ == 'dict'
 
 
@@ -96,9 +95,9 @@ def prune(tree, test_data):
     if is_tree(tree['left']) or is_tree(tree['right']):
         l_set, r_set = bin_split_data(test_data, tree['split_dim'], tree['split_val'])
         if is_tree(tree['left']):
-            return prune(tree['left'], l_set)
+            tree['left'] = prune(tree['left'], l_set)
         if is_tree(tree['right']):
-            return prune(tree['right'], r_set)
+            tree['right'] = prune(tree['right'], r_set)
     if not is_tree(tree['left']) and not is_tree(tree['right']):
         l_set, r_set = bin_split_data(test_data, tree['split_dim'], tree['split_val'])
         err_no_merge = np.sum(np.power(l_set[:, -1] - tree['left'], 2)) + np.sum(
@@ -112,6 +111,11 @@ def prune(tree, test_data):
             return tree
     else:
         return tree
+
+
+def linear_solve(data_set):
+    m, n = np.shape(data_set)
+    x = np.mat()
 
 
 if __name__ == '__main__':
