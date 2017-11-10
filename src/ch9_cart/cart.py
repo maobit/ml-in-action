@@ -115,7 +115,60 @@ def prune(tree, test_data):
 
 def linear_solve(data_set):
     m, n = np.shape(data_set)
-    x = np.mat()
+    x = np.mat(np.ones((m, n)))
+    y = np.mat(np.ones((m, 1)))
+    x[:, 1:n] = data_set[:, 0:n - 1]
+    y = data_set[:, -1]
+    xtx = x.T * x
+    if np.linalg.det(xtx) == 0.0:
+        raise NameError('this matrix is singular, cannot do inverse')
+    ws = xtx.I * (x.T * y)
+    return ws, x, y
+
+
+def model_leaf(data_set):
+    ws, x, y = linear_solve(data_set)
+    return ws
+
+
+def model_err(data_set):
+    ws, x, y = linear_solve(data_set)
+    y_hat = x * ws
+    return np.sum(np.power(y - y_hat, 2))
+
+
+def reg_tree_eval(model, data):
+    return float(model)
+
+
+def model_tree_eval(model, data):
+    n = np.shape(data)[1]
+    x = np.mat(np.ones((1, n + 1)))
+    x[:, 1:n + 1] = data
+    return float(x * model)
+
+
+def tree_forecast(tree, data, model_eval=reg_tree_eval):
+    if not is_tree(tree):
+        return model_eval(tree, data)
+    if data[[tree['split_dim']]] > tree['split_val']:
+        if is_tree(tree['left']):
+            return tree_forecast(tree['left'], data, model_eval)
+        else:
+            return model_eval(tree['left'], data)
+    else:
+        if is_tree(tree['right']):
+            return tree_forecast(tree['right'], data, model_eval)
+        else:
+            return model_eval(tree['right'], data)
+
+
+def create_forecast(tree, test_data, model_eval=reg_tree_eval):
+    m = len(test_data)
+    y_hat = np.mat(np.zeros((m, 1)))
+    for i in range(m):
+        y_hat[i, 0] = tree_forecast(tree, np.mat(test_data[i]), model_eval)
+    return y_hat
 
 
 if __name__ == '__main__':
